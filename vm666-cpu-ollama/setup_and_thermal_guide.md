@@ -1,21 +1,16 @@
-# Node 666: CPU Brute Force (Ollama)
+# Node 666: CPU "Hard Fence" (Ollama)
 
-While Node 669 handles efficient, continuous uptime via the iGPU, Node 666 is a Virtual Machine dedicated to high-speed burst reasoning using the Ryzen 9 9955HX's AVX-512 CPU instructions.
+Node 666 is intentionally designed as a pure-CPU inference node. Because this Proxmox host is shared with other critical workloads (like RKE2 testing), we do not allow the AI to have unconstrained access to the CPU.
 
-## The ROCm Pivot
-Initially, standard AMD ROCm was tested on this node. However, due to hypervisor passthrough limitations and the lack of official ROCm support for the RDNA 3.5 architecture (890M), the system defaulted to CPU inference. 
+## The Proxmox "Hard Fence" Strategy
+Instead of relying on software-level thread limiting inside Ollama (which can fail and cause 90°C+ thermal spikes), resource isolation is enforced at the hypervisor level.
 
-## Thermal Warning & Mitigation 🚨
-Running 8B+ parameter models on bare CPU cores generates massive heat. During testing, unchecked CPU inference caused rapid thermal spikes exceeding 90°C. 
+### Proxmox UI Configuration:
+1. **Cores:** Restricted to exactly 1/4th of the available host cores (e.g., 4 vCPUs out of 16).
+2. **CPU Type:** Set to `host` to ensure AVX-512 instructions from the Ryzen 9 9955HX pass through to the VM for maximum inference speed on those 4 cores.
+3. **Memory:** Hard-capped to prevent OOM (Out of Memory) crashes from bleeding into the host.
 
-To prevent thermal shutdown and hardware degradation, you **must** limit the thread count in Ollama.
-
-### How to throttle the CPU engine:
-If you are running Ollama as a systemd service, edit the service file:
-`sudo systemctl edit ollama`
-
-Add the following environment variables to restrict CPU thread usage:
-```ini
-[Service]
-Environment="OLLAMA_NUM_PARALLEL=1"
-Environment="OLLAMA_MAX_THREADS=8"
+## The Engine
+* **Deployment:** Docker
+* **Image:** `ollama/ollama` (Standard CPU image. Do NOT use the `:rocm` tag here, as the missing iGPU passthrough causes unnecessary driver overhead).
+* **Port:** 11434
