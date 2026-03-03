@@ -1,0 +1,55 @@
+services:
+  ollama:
+    #This docker compose is for rocm which is hardware APIs
+    image: ollama/ollama:rocm
+    container_name: bare-ai-engine
+    # Resource limiting enforced here to match Proxmox Hard Fence
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G   
+    # Pass the AMD compute and graphics interfaces into the container
+   #devices:
+    # - "/dev/kfd:/dev/kfd"
+    # - "/dev/dri:/dev/dri"
+     # --- CRITICAL ADDITIONS FOR HUGEPAGES ---
+    cap_add:
+      - IPC_LOCK  # Allows the container to lock memory
+    ulimits:
+      memlock:
+        soft: -1  # Set to unlimited
+        hard: -1
+    volumes:
+      - ollama_data:/root/.ollama
+      - "/dev/hugepages:/dev/hugepages" # Mount the 1GB blocks
+      # ---------------------------------------- 
+    environment:
+      # This flag forces ROCm to support the modern Granite Ridge RDNA architecture
+      - HSA_OVERRIDE_GFX_VERSION=11.0.2
+    restart: unless-stopped
+    # AIR-GAPPED: The public ports block was intentionally removed here!
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: bare-ai-webui
+    depends_on:
+      - ollama
+    volumes:
+      - open_webui_data:/app/backend/data
+    environment:
+      # This tells the UI how to talk to the air-gapped engine inside Docker
+      - OLLAMA_BASE_URL=http://bare-ai-engine:11434 
+      - WEBUI_AUTH=True
+      - WEBUI_NAME="Tír-na-AI (CPU Node)"
+ ports:
+# Dear End user, please replace these with your own local/VPN IPs      
+# STRICT BIND 1: Local Network Only
+      - "192.168.86.204:3000:8080"
+      # STRICT BIND 2: Headscale Network Only
+      - "100.64.0.6:3000:8080"
+    restart: unless-stopped
+
+volumes:
+ollama_data:
+  open_webui_data:
