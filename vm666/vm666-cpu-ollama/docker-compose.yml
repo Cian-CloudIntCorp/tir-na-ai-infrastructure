@@ -35,6 +35,7 @@ services:
     container_name: bare-ai-webui
     depends_on:
       - ollama
+      - open-terminal
     volumes:
       - open_webui_data:/app/backend/data
     environment:
