@@ -1,7 +1,7 @@
 services:
   ollama:
-    #This docker compose is for rocm which is hardware APIs
-    image: ollama/ollama:rocm
+    # This docker compose is for CPU only hardware APIs compute, in the developers case it was: AVX-512
+    image: ollama/ollama:latest
     container_name: bare-ai-engine
     # Resource limiting enforced here to match Proxmox Hard Fence
     deploy:
@@ -9,10 +9,6 @@ services:
         limits:
           cpus: '4'
           memory: 8G
-    # Pass the AMD compute and graphics interfaces into the container
-    #devices:
-    #  - "/dev/kfd:/dev/kfd"
-    #  - "/dev/dri:/dev/dri"
     # --- CRITICAL ADDITIONS FOR HUGEPAGES ---
     cap_add:
       - IPC_LOCK  # Allows the container to lock memory
@@ -22,13 +18,23 @@ services:
         hard: -1
     volumes:
       - ollama_data:/root/.ollama
-      - "/dev/hugepages:/dev/hugepages" # Mount the 1GB blocks
-      # ----------------------------------------
+      - "/dev/hugepages:/dev/hugepages" # Mount the 1GB hugepage blocks
+    # ----------------------------------------
     environment:
-      # This flag forces ROCm to support the modern Granite Ridge RDNA architecture
+      # NOTE: Left in for documentation purposes
       - HSA_OVERRIDE_GFX_VERSION=11.0.2
     restart: unless-stopped
-    # AIR-GAPPED: The public ports block was intentionally removed here!
+    # AIR-GAPPED: No public ports exposed intentionally
+
+  open-terminal:
+    image: ghcr.io/open-webui/open-terminal:main
+    container_name: open-terminal
+    restart: unless-stopped
+    environment:
+      - API_KEY=tir_na_ai_secret_key # User should change this
+    volumes:
+      - open_terminal_data:/home/user
+    # No ports exposed: Keeps the terminal air-gapped from local/VPN network
 
   open-webui:
     image: ghcr.io/open-webui/open-webui:main
@@ -44,7 +50,6 @@ services:
       - WEBUI_AUTH=True
       - WEBUI_NAME="Tír-na-AI (CPU Node)"
     ports:
-      # Dear End user, please replace these with your own local/VPN IPs
       # STRICT BIND 1: Local Network Only
       - "192.168.86.204:3000:8080"
       # STRICT BIND 2: Headscale Network Only
@@ -54,3 +59,4 @@ services:
 volumes:
   ollama_data:
   open_webui_data:
+  open_terminal_data:
