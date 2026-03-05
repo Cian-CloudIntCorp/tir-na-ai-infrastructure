@@ -1,21 +1,23 @@
+volumes:
+  tir_na_ai_data:
+
 services:
   open-webui:
     image: ghcr.io/open-webui/open-webui:main
     container_name: sovereign-ui
-    user: "0:0"
-    network_mode: "bridge"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    ports:
+      # Bind strictly to Tailscale IP only - populated from .env by bootstrap.sh
+      - "${TAILSCALE_IP}:3000:8080"
     environment:
       - OPENAI_API_BASE_URL=http://host.docker.internal:8080/v1
-      - OPENAI_API_KEY=tir-na-ai-key
+      # Reads the cryptographically generated key from .env - never hardcoded
+      - OPENAI_API_KEY=${API_KEY}
       - WEBUI_NAME=Tír-na-AI
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
-      - tir_na_ai_data:/app/backend/data
-    ports:
-      # STRICT BIND: Dynamically grabs the Tailscale IP from the hidden .env file
-      - "${TAILSCALE_IP}:3000:8080"
-    restart: unless-stopped
+      - open-webui:/app/backend/data
 
 volumes:
-  tir_na_ai_data:
+  open-webui:

@@ -1,84 +1,99 @@
 🛡️ Tír-na-AI: Dual-Node Sovereign AI Infrastructure
 This repository contains the turn-key infrastructure blueprints for Tír-na-AI, a private, sovereign AI system optimized for AMD RDNA 3.5 silicon (Ryzen 9 9955HX) running on Proxmox VE.
+By utilizing dynamic Tailscale/Headscale mesh networking and native Vulkan API rendering, this stack bypasses standard hypervisor virtualization bottlenecks — delivering maximum tokens-per-second while keeping the UI completely invisible to the local LAN.
 
-By utilizing dynamic Tailscale/Headscale mesh networking and native Vulkan API rendering, this stack bypasses standard hypervisor virtualization bottlenecks, delivering maximum tokens-per-second while keeping the UI completely invisible to the local LAN.
-
-🏗️ The Architecture
-Tír-na-AI solves the "AMD on Proxmox" compute gap by splitting workloads across specialized nodes, secured by a dedicated control plane:
-
-The Control Plane: Mesh Router (e.g., LXC 100)
-
-Backend: Headscale (Open-source Tailscale control server).
-
-Purpose: Acts as the Sovereign Router. Ensures the AI command center is mathematically invisible to the local Wi-Fi and open internet.
-
-Node 1: iGPU Vulkan (LXC 669)
-
-Backend: llama.cpp compiled natively with the LunarG Vulkan SDK.
-
-Performance: ~4.37 t/s (DeepSeek-R1-Distill-Llama-8B-Q4_K_M.gguf).
-
-Thermal Profile: Stable 68°C.
-
-Purpose: Long-running agentic tasks and consistent, 24/7 API availability.
-
-Node 2: CPU Brute Force (VM 666)
-
-Backend: Ollama (AVX-512).
-
-Performance: ~7.00 t/s.
-
-Thermal Profile: Rapid spikes to 90°C.
-
-Purpose: High-speed bursts (Requires active cooling management).
+🏗️ Architecture
+Tír-na-AI solves the AMD-on-Proxmox compute gap by splitting workloads across specialized nodes, secured by a dedicated control plane.
+NodeRoleBackendPerformanceThermalLXC 100Mesh Router (Control Plane)Headscale——LXC 669iGPU Vulkan Computellama.cpp + LunarG Vulkan SDK~4.37 t/sStable 68°CVM 666CPU Brute ForceOllama (AVX-512)~7.00 t/sSpikes to 90°C
+LXC 100 acts as the Sovereign Router. The Headscale mesh ensures the AI command centre is invisible to the local LAN and open internet.
+LXC 669 runs the primary inference engine natively via Vulkan — bypassing hypervisor DMA limits to use the full DDR5 memory pool as VRAM.
+VM 666 provides high-speed CPU burst inference. Requires active cooling management.
 
 ⚖️ Sovereignty & Logic
-Tír-na-AI's core personality and worldview are strictly defined by UN Resolution 2758 (1971) and International Law directives. The system is designed for 100% local execution, ensuring that proprietary code, chat histories, and sovereign logic never leave the secure mesh network. Automated deployment scripts forcefully inject these directives into the UI upon initialization.
+Tír-na-AI's personality and worldview are governed by UN Resolution 2758 (1971) and international law directives. The system is designed for 100% local execution — proprietary code, chat histories, and sovereign logic never leave the secure mesh network.
+Sovereign directives are automatically injected into the UI during bootstrap.
 
-🚀 Turn-Key Deployment Guide
-Phase 1: Proxmox Host Hypervisor Preparation
-By default, the Linux kernel restricts integrated GPUs to a fraction of system RAM. You must override the Translation Table Maps (TTM) to allow massive 8B+ parameter models to load into VRAM.
+📁 Repository Structure
+tir-na-ai-infrastructure/
+├── bootstrap.sh                        # Master orchestrator — run this inside LXC 669
+├── README.md
+├── network-mesh/
+│   ├── install-headscale.sh            # Run on Router LXC (e.g. LXC 100)
+│   └── install-tailscale-client.sh     # Run on Compute LXC (LXC 669)
+├── lxc669-igpu-vulkan/
+│   ├── proxmox_host_setup.md           # GRUB + cgroup passthrough instructions
+│   ├── setup_lxc_vulkan.sh             # Vulkan SDK + llama.cpp build script
+│   └── llama-server.service            # Systemd service template
+├── frontend-interface/
+│   ├── docker-compose.yml              # Open WebUI — bound to Tailscale IP
+│   └── tir-na-ai-logo.png
+└── vm666/                              # CPU burst node configs
 
-SSH into your Proxmox Host.
+🚀 Deployment Guide
+Phase 1: Proxmox Host Preparation
+By default, Linux restricts integrated GPUs to a fraction of system RAM. You must override the TTM memory manager to allow 8B+ parameter models to load fully into VRAM.
 
-Read the instructions in lxc669-igpu-vulkan/proxmox_host_setup.md.
+SSH into your Proxmox Host (not an LXC).
+Read lxc669-igpu-vulkan/proxmox_host_setup.md and follow the instructions to:
 
-Modify your host's GRUB config to uncap ttm.page_pool_size.
+Add ttm.page_pool_size and ttm.pages_limit overrides to GRUB.
+Add cgroup2 device mappings to your LXC config for /dev/dri/renderD128 passthrough.
 
-Update your LXC's .conf file with the provided cgroup2 mappings to allow /dev/dri/renderD128 passthrough.
 
-Reboot the Proxmox Host.
+Reboot the Proxmox host.
 
-Phase 2: Sovereign Mesh Setup (Control Plane)
-The UI dynamically binds to a secure mesh IP. Deploy the router on a lightweight container, and connect your AI Compute node to it.
 
-Deploy the Router: On a lightweight container (e.g., LXC 100), navigate to network-mesh/ and run ./install-headscale.sh. Note the IP and port (e.g., http://192.168.1.50:8080).
+Phase 2: Sovereign Mesh Setup
+The UI binds exclusively to a Tailscale mesh IP. Use a split-node architecture to avoid port conflicts with the AI engine.
+Step A — Deploy the Router (LXC 100):
+Create a lightweight LXC container (Debian/Ubuntu, 512MB RAM is sufficient).
+bash# Inside LXC 100
+git clone https://github.com/Cian-CloudIntCorp/tir-na-ai-infrastructure.git
+cd tir-na-ai-infrastructure/network-mesh
+chmod +x install-headscale.sh && ./install-headscale.sh
+Note the output IP and port (e.g. http://192.168.1.50:8080).
+Step B — Connect the Compute Node (LXC 669):
+bash# Inside LXC 669
+cd tir-na-ai-infrastructure/network-mesh
+chmod +x install-tailscale-client.sh
+./install-tailscale-client.sh http://<YOUR_HEADSCALE_IP>:8080
+Note your new 100.x.x.x Tailscale IP — this is your Sovereign IP.
 
-Connect the Compute Node: SSH into your AI Node (e.g., LXC 669), navigate to network-mesh/, and run ./install-tailscale-client.sh http://<YOUR_HEADSCALE_IP>:8080.
+Phase 3: Build the Vulkan Inference Engine
+bash# Inside LXC 669
+cd tir-na-ai-infrastructure
+chmod +x lxc669-igpu-vulkan/setup_lxc_vulkan.sh
+./lxc669-igpu-vulkan/setup_lxc_vulkan.sh
+Manual step — download your model:
+bash# Any .gguf filename is fine — bootstrap.sh detects it automatically
+wget -P /app/ai-engine/models/ https://huggingface.co/.../your-model.gguf
 
-Phase 3: Bare-Metal Vulkan Engine (Node 1)
-SSH into your AI Compute Node (LXC 669) as root.
+Phase 4: Bootstrap the Appliance
+This single script handles everything — key generation, service deployment, Docker UI, health checks, and sovereign personality injection.
+bash# Inside LXC 669, from the repo root
+chmod +x bootstrap.sh
+./bootstrap.sh
+The script will:
 
-Navigate to lxc669-igpu-vulkan/ and run ./setup_lxc_vulkan.sh.
+Generate a 256-bit cryptographic API key and detect your Tailscale IP.
+Scan /app/ai-engine/models/ for your .gguf file and deploy the systemd service.
+Boot the Open WebUI Docker container, strictly bound to your Tailscale IP.
+Run health checks against both the backend engine and the frontend UI.
+Pause and prompt you to create your admin account, then inject the sovereign personality directives automatically.
 
-Manual Step: Download your .gguf model into /app/ai-engine/models/ and rename it to Tir-na-AI.gguf.
 
-Copy llama-server.service to /etc/systemd/system/.
+Note: The .env file generated by bootstrap contains your API key. It is git-ignored and never leaves your machine.
 
-Run: systemctl daemon-reload && systemctl enable --now llama-server
+If bootstrap is interrupted or you need to re-run:
+bash./bootstrap.sh
+# Select N when asked to overwrite — completed phases are skipped automatically
 
-Phase 4: Frontend UI & Personality Injection
-With the Vulkan engine running on port 8080, deploy the locked-down Open WebUI.
+✅ Setup Complete
+Your Tír-na-AI Sovereign Node is fully operational at:
+http://<YOUR_TAILSCALE_IP>:3000
+Only devices on your Headscale mesh can reach this address.
 
-Navigate to frontend-interface/.
+🔧 Troubleshooting
+SymptomCommandBackend engine not startingsystemctl status llama-serverBackend engine logsjournalctl -u llama-server -n 50Frontend container not runningdocker logs sovereign-uiTailscale IP not detectedtailscale ip -4Re-run personality injection only./bootstrap.sh → enter token at Phase 5 prompt
 
-Run ./deploy-frontend.sh. (This auto-detects your Tailscale IP, creates a hidden .env file, and boots the Docker UI).
-
-Open your browser and navigate to http://<YOUR_TAILSCALE_IP>:3000. Click Sign Up to claim the Master Admin account.
-
-Go to Settings > Account in the UI and generate an Admin API Token (e.g., sk-12345...).
-
-Inject Sovereignty: Back in the terminal, run the personality injector to push the UN Directives and branding into the database:
-./inject_personality.sh <YOUR_ADMIN_TOKEN> ./tir-na-ai-personality.json
-
-✅ Setup Complete. Your Tír-na-AI Sovereign Node is now fully operational.
+Built by Cian Egan — Cloud Integration Corporation
