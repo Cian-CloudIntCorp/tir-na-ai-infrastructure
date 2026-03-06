@@ -84,6 +84,7 @@ trap 'rm -f "$SERVICE_TMP"' EXIT
 sed \
   -e "s|PLACEHOLDER_MODEL_PATH|${GGUF_FILE}|" \
   -e "s|PLACEHOLDER_KEY|${API_KEY}|" \
+  -e "s|PLACEHOLDER_IP|${TS_IP}|" \
   "$SERVICE_TEMPLATE" > "$SERVICE_TMP"
   
 

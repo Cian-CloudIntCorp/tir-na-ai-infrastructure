@@ -12,7 +12,7 @@ ExecStart=/app/ai-engine/llama.cpp/build/bin/llama-server \
   -a "Tir-na-AI" \
   --api-key PLACEHOLDER_KEY \
   -ngl 99 \
-  --host 0.0.0.0 \
+  --host PLACEHOLDER_IP \
   --port 8080 \
   -c 4096 \
   --no-mmap
