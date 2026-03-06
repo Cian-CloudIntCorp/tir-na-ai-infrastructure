@@ -1,143 +1,179 @@
-div align="center">
-🛡️ Tír-na-AI
-Dual-Node Sovereign AI Infrastructure
-Private, local, zero-cloud — built for AMD RDNA 3.5 on Proxmox VE
+<div align="center">
+  <h1>🛡️ Tír-na-AI: The "Everyman" Sovereign AI Node</h1>
+  <p><b>Private, local, zero-cloud — Powered by Vulkan for universal iGPU & CPU compatibility on Proxmox VE.</b></p>
 </div>
 
-By utilizing dynamic Tailscale/Headscale mesh networking and native Vulkan API rendering, this stack bypasses standard hypervisor virtualization bottlenecks — delivering maximum tokens-per-second while keeping the UI completely invisible to the local LAN.
+Most local AI deployments assume you own an expensive, dedicated NVIDIA GPU. **Tír-na-AI is different.** By utilizing the Vulkan API and advanced Proxmox container mapping, this stack bypasses standard hypervisor bottlenecks to unlock the raw power of **Integrated GPUs (iGPUs)**. Whether you are running an AMD RDNA chip or Intel Xe graphics, Tír-na-AI turns standard APU hardware into a secure, high-speed, enterprise-grade inference appliance. 
 
-⏱️ Time & Hardware Requirements
-Estimated Deployment Time
-PhaseTaskTimePhase 1Proxmox GRUB + cgroup config~15 minPhase 2Mesh network setup (Headscale + Tailscale)~10 minPhase 3Vulkan SDK install + llama.cpp compile~25–40 minPhase 3Model download (8B Q4 ~4.5GB)~5–20 min (network dependent)Phase 4Bootstrap + health checks + injection~5 minTotalFirst-time full deployment~60–90 min
+Coupled with a dynamic Tailscale/Headscale mesh network, the AI command center remains **100% mathematically invisible** to your local LAN and the open internet.
 
-Re-deploying after initial setup (e.g. swapping models or restarting the UI) takes under 2 minutes — just re-run ./bootstrap.sh.
+---
 
-Minimum Hardware Requirements
-ComponentMinimumRecommendedCPUAMD Ryzen APU with RDNA iGPURyzen 9 9955HX (Strix Point)RAM32GB DDR5 (shared with iGPU VRAM)64GB DDR5Storage50GB free100GB+ NVMe SSDHost OSProxmox VE 8.xProxmox VE 8.xNetworkLocal LANLAN + internet (for initial setup only)
+## 📖 About the Project
 
-RDNA 3.5 note: This project is specifically optimised for the AMD 890M integrated GPU (Strix Point APU). It may work on other RDNA iGPUs but has only been validated on the Ryzen 9 9955HX.
+### 1. True Data Sovereignty
+Tír-na-AI is designed for absolute privacy. Proprietary code, chat histories, and prompts never leave your secure mesh network. Furthermore, the system is injected at boot with a strict geopolitical worldview anchored in international law and UN Resolution 2758 (1971), ensuring neutral, non-corporate, sovereign outputs. 
 
-
-RAM note: The iGPU shares system RAM as VRAM. Running a 8B Q4 model requires ~6–8GB dedicated to the GPU. 32GB total is the practical minimum — 64GB is strongly recommended for headroom.
+### 2. Zero-Trust Architecture
+We do not bind services to `0.0.0.0`. The entire stack (Backend Engine + Web UI) communicates exclusively over a WireGuard-backed Tailscale IP. If a device is not explicitly invited to your mesh network, the AI does not exist to them.
 
 
-🏗️ Architecture
-Tír-na-AI solves the AMD-on-Proxmox compute gap by splitting workloads across specialised nodes, secured by a dedicated control plane.
-NodeRoleBackendPerformanceThermalLXC 100Mesh Router (Control Plane)Headscale——LXC 669iGPU Vulkan Computellama.cpp + LunarG Vulkan SDK~4.37 t/sStable 68°CVM 666CPU Brute ForceOllama (AVX-512)~7.00 t/sSpikes to 90°C
 
-LXC 100 acts as the Sovereign Router. Headscale ensures the AI command centre is invisible to the local LAN and open internet.
-LXC 669 runs the primary inference engine natively via Vulkan — bypassing hypervisor DMA limits to use the full DDR5 memory pool as VRAM.
-VM 666 provides high-speed CPU burst inference. Requires active cooling management.
+### 3. Dual-Mode Enterprise Orchestration
+Our turn-key `bootstrap.sh` script is built for everyone:
+* **Standard Mode (Homelab):** Automatically generates secure, 256-bit cryptographic API keys locally.
+* **97%+++ Enterprise Mode (Power Users):** Natively integrates with HashiCorp Vault via AppRole authentication, ensuring your master API keys exist only in RAM and never touch the hard drive. Take it to 99% yourself by cycling the Vault `secret_id` keys every 30 days (`secret_id_ttl=720h`).
 
+---
 
-⚖️ Sovereignty & Logic
-Tír-na-AI's personality and worldview are governed by UN Resolution 2758 (1971) and international law directives. The system is designed for 100% local execution — proprietary code, chat histories, and sovereign logic never leave the secure mesh network.
-Sovereign directives are automatically injected into the UI during bootstrap.
+## 🏗️ The Split-Node Architecture
 
-📁 Repository Structure
+Tír-na-AI solves the "APU-on-Proxmox" compute gap by splitting workloads across specialized nodes, secured by a dedicated control plane.
+
+| Node | Role | Technology | Performance |
+| :--- | :--- | :--- | :--- |
+| **LXC 100** | Sovereign Router (Control Plane) | Headscale | Lightweight |
+| **LXC 101** | Sovereign Secrets (Control Plane) | HashiCorp Vault | Lightweight |
+| **LXC 669** | Primary Compute Node | Vulkan API / llama.cpp | Maximum efficiency using shared VRAM |
+| **VM 666** | CPU Brute Force Node | Ollama (AVX-512) | High-speed burst inference |
+
+---
+
+## ⏱️ Time & Hardware Requirements
+
+### Minimum Hardware Requirements
+| Component | Minimum | Recommended (Our Test Bench) |
+| :--- | :--- | :--- |
+| **Processor** | Any Vulkan-compatible APU/CPU | AMD Ryzen 9 9955HX (Strix Point) |
+| **RAM** | 32GB DDR5 (shared with iGPU) | 64GB DDR5 |
+| **Storage** | 50GB free | 100GB+ NVMe SSD |
+| **Host OS** | Proxmox VE 8.x | Proxmox VE 8.x |
+
+> **RAM Note:** Because integrated GPUs use system RAM as VRAM, running an 8B parameter model at Q4 quantization requires ~6–8GB of RAM dedicated exclusively to the GPU. 32GB total is the practical minimum for the hypervisor.
+
+### Estimated Deployment Time
+| Phase | Task | Time |
+| :--- | :--- | :--- |
+| **Phase 1** | Proxmox GRUB + cgroup config | ~15 min |
+| **Phase 2** | Mesh network setup (Headscale + Tailscale) | ~10 min |
+| **Phase 3** | Vulkan SDK install + llama.cpp compile | 25–40 min |
+| **Phase 4** | Model download (8B Q4 ~4.5GB) | 5–20 min |
+| **Phase 5** | Bootstrap + health checks + inline injection | ~5 min |
+| **Total** | **First-time full deployment** | **60–90 min** |
+
+> **Fast Redeployment:** Re-deploying after initial setup (e.g., swapping models, rotating Vault keys, or restarting the UI) takes under 2 minutes. Just re-run `./bootstrap.sh`.
+
+---
+
+## 📁 Repository Structure
+
+```text
 tir-na-ai-infrastructure/
-├── bootstrap.sh                        # Master orchestrator — run inside LXC 669
+├── bootstrap.sh                        # Dual-Mode Master Orchestrator (Standard/Vault)
 ├── README.md
 ├── network-mesh/
-│   ├── install-headscale.sh            # Run on Router LXC (e.g. LXC 100)
-│   └── install-tailscale-client.sh     # Run on Compute LXC (LXC 669)
+│   ├── install-headscale.sh            # Run on Router LXC (e.g., LXC 100)
+│   └── install-tailscale-client.sh     # Run on Compute LXC (e.g., LXC 669)
 ├── lxc669-igpu-vulkan/
 │   ├── proxmox_host_setup.md           # GRUB + cgroup passthrough instructions
 │   ├── setup_lxc_vulkan.sh             # Vulkan SDK + llama.cpp build script
-│   └── llama-server.service            # Systemd service template (do not edit)
+│   └── llama-server.service            # Systemd service template (Zero-Trust IP Bound)
 ├── frontend-interface/
-│   ├── docker-compose.yml              # Open WebUI — bound to Tailscale IP
+│   ├── docker-compose.yml              # Open WebUI
 │   └── tir-na-ai-logo.png
-└── vm666/                              # CPU burst node configs
+└── vm666/                              # CPU burst node configs (AVX-512)
+```
 
-🚀 Deployment Guide
+---
 
-Before you begin: Each phase runs on a different machine. Read the context note at the top of each phase carefully.
+## 🚀 Deployment Guide
 
+> **Important:** Each phase runs on a different machine. Read the context note at the top of each phase carefully.
 
-Phase 1: Proxmox Host Preparation
+### Phase 1: Proxmox Host Preparation
+🖥️ **Run on:** Proxmox bare-metal host (Not inside any LXC or VM)
 
-🖥️ Run on: Proxmox bare-metal host (not inside any LXC or VM)
-
-By default, Linux restricts integrated GPUs to a fraction of system RAM. You must override the TTM memory manager to allow 8B+ parameter models to load fully into VRAM.
-
-SSH into your Proxmox Host.
-Read lxc669-igpu-vulkan/proxmox_host_setup.md and follow the instructions to:
-
-Add ttm.page_pool_size and ttm.pages_limit overrides to GRUB.
-Add cgroup2 device mappings to your LXC .conf file for /dev/dri/renderD128 passthrough.
+By default, Linux restricts integrated GPUs to a fraction of system RAM. You must override the TTM memory manager to allow models to load fully into VRAM.
+1. SSH into your Proxmox Host.
+2. Read `lxc669-igpu-vulkan/proxmox_host_setup.md` and follow the instructions to append the `ttm` overrides to GRUB and pass `/dev/dri/renderD128` to your LXC container.
+3. Reboot the Proxmox host.
 
 
-Reboot the Proxmox host.
 
+### Phase 2: Sovereign Mesh Setup
+🌐 **Step A runs on:** Router Node (LXC 100)  |  **Step B runs on:** Compute Node (LXC 669)
 
-Phase 2: Sovereign Mesh Setup
-
-🌐 Step A runs on: LXC 100 (Router) — Step B runs on: LXC 669 (Compute)
-
-The UI binds exclusively to a Tailscale mesh IP. A split-node architecture keeps the mesh router on a separate lightweight container, avoiding port conflicts with the AI engine.
-Step A — Deploy the Router (LXC 100):
-Create a lightweight LXC container (Debian/Ubuntu, 512MB RAM is sufficient).
-bash# Inside LXC 100
-git clone https://github.com/Cian-CloudIntCorp/tir-na-ai-infrastructure.git
+**Step A — Deploy the Router (LXC 100):**
+```bash
+git clone [https://github.com/Cian-CloudIntCorp/tir-na-ai-infrastructure.git](https://github.com/Cian-CloudIntCorp/tir-na-ai-infrastructure.git) 
 cd tir-na-ai-infrastructure/network-mesh
 chmod +x install-headscale.sh && ./install-headscale.sh
-Note the output IP and port — you will need it in Step B (e.g. http://192.168.1.50:8080).
-Step B — Connect the Compute Node (LXC 669):
-bash# Inside LXC 669
-git clone https://github.com/Cian-CloudIntCorp/tir-na-ai-infrastructure.git
+```
+*(Note the output IP and port — you will need it for Step B).*
+
+**Step B — Connect the Compute Node (LXC 669):**
+```bash
+git clone [https://github.com/Cian-CloudIntCorp/tir-na-ai-infrastructure.git](https://github.com/Cian-CloudIntCorp/tir-na-ai-infrastructure.git) 
 cd tir-na-ai-infrastructure/network-mesh
 chmod +x install-tailscale-client.sh
 ./install-tailscale-client.sh http://<YOUR_HEADSCALE_IP>:8080
-Note your new 100.x.x.x Tailscale IP — this is your Sovereign IP.
+```
 
-Phase 3: Build the Vulkan Inference Engine
+### Phase 3: Build the Vulkan Inference Engine
+🧠 **Run on:** Compute Node (LXC 669)
 
-🧠 Run on: LXC 669 (Compute Node)
-
-This phase installs the LunarG Vulkan SDK and compiles llama.cpp from source. This only needs to run once. Expect 25–40 minutes.
-bash# Inside LXC 669, from the repo root
-cd tir-na-ai-infrastructure
+This phase installs the LunarG Vulkan SDK and compiles `llama.cpp` from source. (Expect 25–40 minutes).
+```bash
+cd ~/tir-na-ai-infrastructure
 chmod +x lxc669-igpu-vulkan/setup_lxc_vulkan.sh
 ./lxc669-igpu-vulkan/setup_lxc_vulkan.sh
-Manual step — download your model:
-bash# Any .gguf filename works — bootstrap.sh detects it automatically
-wget -P /app/ai-engine/models/ https://huggingface.co/.../your-model.gguf
+```
 
-Tested with DeepSeek-R1-Distill-Llama-8B-Q4_K_M.gguf. Other 8B Q4 models should work.
+**Download your Model:**
+```bash
+wget -P /app/ai-engine/models/ [https://huggingface.co/.../your-model.gguf](https://huggingface.co/.../your-model.gguf)
+```
 
+### Phase 4: Bootstrap the Appliance (Dual-Mode)
+⚡ **Run on:** Compute Node (LXC 669) — *This is the only command you need for all future deployments.*
 
-Phase 4: Bootstrap the Appliance
+`bootstrap.sh` is the master orchestrator. It handles systemd deployment, UI booting, Zero-Trust network binding, and inline personality injection. 
 
-⚡ Run on: LXC 669 (Compute Node) — this is the only command you need for all future deployments
-
-This single script handles everything: key generation, service deployment, Docker UI, health checks, and sovereign personality injection.
-bash# Inside LXC 669, from the repo root
-chmod +x bootstrap.sh
+**Option A: Standard Mode (Local Homelab)**
+Generates a highly secure 256-bit cryptographic API key locally.
+```bash
+cd ~/tir-na-ai-infrastructure
 ./bootstrap.sh
-The script will automatically:
+```
 
-Generate a 256-bit cryptographic API key and detect your Tailscale IP.
-Scan /app/ai-engine/models/ for your .gguf file and deploy the systemd service.
-Boot the Open WebUI Docker container, strictly bound to your Tailscale IP.
-Run health checks against both the backend engine and the frontend UI.
-Pause and prompt you to create your admin account, then inject the sovereign personality directives.
+**Option B: Enterprise Mode (HashiCorp Vault Integration)**
+For advanced deployments. Skips local generation and pulls the master API key securely into RAM via an AppRole, ensuring zero secrets are stored on the disk.
+```bash
+cd ~/tir-na-ai-infrastructure
 
+VAULT_ADDR="http://<YOUR_VAULT_IP>:8200" \
+VAULT_ROLE_ID="<YOUR_ROLE_ID>" \
+VAULT_SECRET_ID="<YOUR_SECRET_ID>" \
+./bootstrap.sh
+```
 
-Note: The .env file generated by bootstrap contains your API key. It is git-ignored and never leaves your machine.
+---
 
-If bootstrap is interrupted or you need to re-run:
-bash./bootstrap.sh
-# Select N when asked to overwrite — completed phases are skipped automatically
-
-✅ Setup Complete
-Your Tír-na-AI Sovereign Node is fully operational at:
-http://<YOUR_TAILSCALE_IP>:3000
+## ✅ Setup Complete
+Your Tír-na-AI Sovereign Node is fully operational at: **`http://<YOUR_TAILSCALE_IP>:3000`**
 
 Only devices enrolled in your Headscale mesh can reach this address. It does not appear on your local LAN.
 
+## 🔧 Troubleshooting
 
-🔧 Troubleshooting
-SymptomCommandBackend engine not startingsystemctl status llama-serverBackend engine logsjournalctl -u llama-server -n 50Frontend container not runningdocker logs sovereign-uiTailscale IP not detectedtailscale ip -4Re-run personality injection only./bootstrap.sh → enter token at Phase 5 promptCheck Vulkan GPU detectionvulkaninfo --summaryCheck iGPU is passed throughls /dev/dri/
+| Symptom | SRE Debug Command |
+| :--- | :--- |
+| **Backend engine not starting** | `systemctl status llama-server` |
+| **Backend engine logs** | `journalctl -u llama-server -n 50` |
+| **Frontend UI not running** | `docker logs sovereign-ui` |
+| **Tailscale IP not detected** | `tailscale ip -4` |
+| **Check Vulkan GPU detection** | `vulkaninfo --summary` |
+| **Check iGPU is passed through** | `ls /dev/dri/` |
 
-Built by Cian Egan — Cloud Integration Corporation
+---
+*Built by Cian Egan — Cloud Integration Corporation*
