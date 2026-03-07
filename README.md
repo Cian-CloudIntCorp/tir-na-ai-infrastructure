@@ -156,6 +156,47 @@ VAULT_ROLE_ID="<YOUR_ROLE_ID>" \
 VAULT_SECRET_ID="<YOUR_SECRET_ID>" \
 ./bootstrap.sh
 ```
+#### Server-Side Vault Preparation (Required for Option B)
+Before running Enterprise Mode, your Vault server (e.g., LXC 101) must be configured to securely serve the master API key. Run this sequence on your Vault instance:
+
+**1. Enable the KV-V2 engine and generate the master key:**
+```bash
+vault secrets enable -path=secret kv-v2
+vault kv put secret/tir-na-ai/config api_key="$(openssl rand -hex 32)"
+```
+
+**2. Create a least-privilege read-only policy:**
+```bash
+cat <<EOF > tir-na-ai-policy.hcl
+path "secret/data/tir-na-ai/config" {
+  capabilities = ["read"]
+}
+EOF
+vault policy write tir-na-ai-bootstrapper tir-na-ai-policy.hcl
+```
+
+**3. Configure the Enterprise AppRole:**
+```bash
+vault auth enable approle
+vault write auth/approle/role/tir-na-ai-node \
+    secret_id_ttl=720h \
+    token_num_uses=20 \
+    token_ttl=5m \
+    token_max_ttl=10m \
+    secret_id_num_uses=0 \
+    policies="tir-na-ai-bootstrapper"
+```
+
+**4. Extract your AppRole credentials: **
+```bash
+Run these two commands to output the exact strings needed for bootstrap.sh:
+vault read -field=role_id auth/approle/role/tir-na-ai-node/role-id
+vault write -field=secret_id -f auth/approle/role/tir-na-ai-node/secret-id
+```
+(OpSec Warning: Clear your .bash_history after generating these secrets!)
+```bash
+history -c && history -w
+```
 
 ---
 
@@ -175,5 +216,6 @@ Only devices enrolled in your Headscale mesh can reach this address. It does not
 | **Check Vulkan GPU detection** | `vulkaninfo --summary` |
 | **Check iGPU is passed through** | `ls /dev/dri/` |
 
+(SRE Note: secret_id_ttl=720h enforces a 30-day security rotation. Set this to 0 if you want a non-expiring key for your homelab).
 ---
 *Built by Cian Egan — Cloud Integration Corporation*
