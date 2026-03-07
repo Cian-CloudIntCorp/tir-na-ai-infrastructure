@@ -26,6 +26,24 @@ Our turn-key `bootstrap.sh` script is built for everyone:
 
 ---
 
+## 📦 External Software Dependencies
+
+This project stands on the shoulders of incredible open-source and enterprise software. To deploy this stack, the orchestrator utilizes the following tools:
+
+| Category | Software | Purpose |
+| :--- | :--- | :--- |
+| **Hypervisor** | Proxmox VE 8.x | Bare-metal virtualization and LXC container management |
+| **Networking** | Tailscale & Headscale | Zero-Trust WireGuard mesh routing |
+| **AI Inference** | llama.cpp | Core C++ backend engine for running .gguf models |
+| **Compute API** | LunarG Vulkan SDK | High-performance cross-platform GPU acceleration |
+| **CPU Engine** | Ollama | AVX-512 optimized inference for the CPU Brute Force node |
+| **Frontend UI** | Open WebUI | Local ChatGPT-style web interface (Dockerized) |
+| **Containerization**| Docker & Docker Compose | Hosting the frontend web UI |
+| **Security** | HashiCorp Vault | Enterprise secrets management (Optional) |
+| **Utilities** | OpenSSL, jq, curl, git | Cryptography, JSON parsing, and repository management |
+
+---
+
 ## 🏗️ The Split-Node Architecture
 
 Tír-na-AI solves the "APU-on-Proxmox" compute gap by splitting workloads across specialized nodes, secured by a dedicated control plane.
@@ -176,6 +194,7 @@ vault policy write tir-na-ai-bootstrapper tir-na-ai-policy.hcl
 ```
 
 **3. Configure the Enterprise AppRole:**
+(SRE Note: secret_id_ttl=720h enforces a 30-day security rotation. Set this to 0 if you want a non-expiring key for your homelab).
 ```bash
 vault auth enable approle
 vault write auth/approle/role/tir-na-ai-node \
@@ -216,6 +235,5 @@ Only devices enrolled in your Headscale mesh can reach this address. It does not
 | **Check Vulkan GPU detection** | `vulkaninfo --summary` |
 | **Check iGPU is passed through** | `ls /dev/dri/` |
 
-(SRE Note: secret_id_ttl=720h enforces a 30-day security rotation. Set this to 0 if you want a non-expiring key for your homelab).
 ---
 *Built by Cian Egan — Cloud Integration Corporation*
